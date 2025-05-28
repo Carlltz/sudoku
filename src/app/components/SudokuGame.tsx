@@ -6,6 +6,15 @@ import styles from './SudokuGame.module.css';
 type SudokuGrid = (number | null)[][];
 type Difficulty = 'easy' | 'medium' | 'hard';
 
+interface LeaderboardEntry {
+    id: string;
+    playerName: string;
+    difficulty: Difficulty;
+    time: number;
+    score: number;
+    date: string;
+}
+
 interface GameState {
     grid: SudokuGrid;
     solution: SudokuGrid;
@@ -37,6 +46,18 @@ const SudokuGame = () => {
 
     const [difficulty, setDifficulty] = useState<Difficulty>('medium');
     const [showErrors, setShowErrors] = useState(true);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [showNameInput, setShowNameInput] = useState(false);
+    const [playerName, setPlayerName] = useState('');
+
+    // Load leaderboard from localStorage on mount
+    useEffect(() => {
+        const savedLeaderboard = localStorage.getItem('sudoku-leaderboard');
+        if (savedLeaderboard) {
+            setLeaderboard(JSON.parse(savedLeaderboard));
+        }
+    }, []);
 
     // Timer effect
     useEffect(() => {
@@ -48,6 +69,13 @@ const SudokuGame = () => {
         }
         return () => clearInterval(interval);
     }, [gameState.isTimerRunning, gameState.isComplete]);
+
+    // Handle game completion
+    useEffect(() => {
+        if (gameState.isComplete && gameState.timer > 0) {
+            setShowNameInput(true);
+        }
+    }, [gameState.isComplete, gameState.timer]);
 
     // Generate a valid sudoku solution
     const generateSolution = (): SudokuGrid => {
@@ -241,6 +269,41 @@ const SudokuGame = () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Calculate score based on time and difficulty
+    const calculateScore = (time: number, difficulty: Difficulty): number => {
+        const baseScore = {
+            easy: 1000,
+            medium: 1500,
+            hard: 2000,
+        }[difficulty];
+
+        // Bonus for speed (more points for faster completion)
+        const timeBonus = Math.max(0, baseScore - time * 2);
+        return Math.round(baseScore + timeBonus);
+    };
+
+    // Save score to leaderboard
+    const saveScore = (name: string) => {
+        const score = calculateScore(gameState.timer, difficulty);
+        const newEntry: LeaderboardEntry = {
+            id: Date.now().toString(),
+            playerName: name,
+            difficulty,
+            time: gameState.timer,
+            score,
+            date: new Date().toLocaleDateString(),
+        };
+
+        const updatedLeaderboard = [...leaderboard, newEntry]
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10); // Keep top 10
+
+        setLeaderboard(updatedLeaderboard);
+        localStorage.setItem('sudoku-leaderboard', JSON.stringify(updatedLeaderboard));
+        setShowNameInput(false);
+        setPlayerName('');
+    };
+
     // Get hint
     const getHint = () => {
         if (!gameState.selectedCell) return;
@@ -278,12 +341,95 @@ const SudokuGame = () => {
                         className={styles.button}>
                         New Game
                     </button>
+                    <button
+                        onClick={() => setShowLeaderboard(!showLeaderboard)}
+                        className={styles.button}>
+                        🏆 Leaderboard
+                    </button>
                 </div>
             </div>
 
             {gameState.isComplete && (
                 <div className={styles.completion}>
                     🎉 Congratulations! You completed the puzzle in {formatTime(gameState.timer)}!
+                    <div className={styles.scoreInfo}>
+                        Score: {calculateScore(gameState.timer, difficulty)} points
+                    </div>
+                </div>
+            )}
+
+            {/* Name Input Modal */}
+            {showNameInput && (
+                <div className={styles.modal}>
+                    <div className={styles.modalContent}>
+                        <h3>🎉 Great job!</h3>
+                        <p>You scored {calculateScore(gameState.timer, difficulty)} points!</p>
+                        <p>Enter your name for the leaderboard:</p>
+                        <input
+                            type="text"
+                            value={playerName}
+                            onChange={(e) => setPlayerName(e.target.value)}
+                            placeholder="Your name"
+                            className={styles.nameInput}
+                            maxLength={20}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter' && playerName.trim()) {
+                                    saveScore(playerName.trim());
+                                }
+                            }}
+                        />
+                        <div className={styles.modalButtons}>
+                            <button
+                                onClick={() => playerName.trim() && saveScore(playerName.trim())}
+                                disabled={!playerName.trim()}
+                                className={styles.button}>
+                                Save Score
+                            </button>
+                            <button
+                                onClick={() => setShowNameInput(false)}
+                                className={`${styles.button} ${styles.secondaryButton}`}>
+                                Skip
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Leaderboard Modal */}
+            {showLeaderboard && (
+                <div className={styles.modal}>
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalHeader}>
+                            <h3>🏆 Leaderboard</h3>
+                            <button
+                                onClick={() => setShowLeaderboard(false)}
+                                className={styles.closeButton}>
+                                ✕
+                            </button>
+                        </div>
+                        <div className={styles.leaderboardContent}>
+                            {leaderboard.length === 0 ? (
+                                <p className={styles.emptyLeaderboard}>No scores yet. Be the first to complete a puzzle!</p>
+                            ) : (
+                                <div className={styles.leaderboardList}>
+                                    {leaderboard.map((entry, index) => (
+                                        <div key={entry.id} className={styles.leaderboardEntry}>
+                                            <div className={styles.rank}>
+                                                {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
+                                            </div>
+                                            <div className={styles.playerInfo}>
+                                                <div className={styles.playerName}>{entry.playerName}</div>
+                                                <div className={styles.gameDetails}>
+                                                    {entry.difficulty} • {formatTime(entry.time)} • {entry.date}
+                                                </div>
+                                            </div>
+                                            <div className={styles.score}>{entry.score}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 

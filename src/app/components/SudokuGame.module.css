@@ -305,6 +305,207 @@
     cursor: pointer;
 }
 
+/* Leaderboard Styles */
+.scoreInfo {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #ffd700;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modalContent {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    color: #333;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: scale(0.8) translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modalHeader h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 5px;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.nameInput {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 1rem;
+    margin: 15px 0;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.nameInput:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.modalButtons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modalButtons .button {
+    flex: 1;
+}
+
+.secondaryButton {
+    background: linear-gradient(45deg, #6b7280, #4b5563) !important;
+    box-shadow: 0 4px 15px rgba(107, 114, 128, 0.4) !important;
+}
+
+.secondaryButton:hover {
+    box-shadow: 0 6px 20px rgba(107, 114, 128, 0.6) !important;
+}
+
+.leaderboardContent {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.emptyLeaderboard {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 40px 20px;
+}
+
+.leaderboardList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.leaderboardEntry {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    transition: transform 0.2s ease;
+    border: 1px solid #e2e8f0;
+}
+
+.leaderboardEntry:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.leaderboardEntry:first-child {
+    background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+    border-color: #f59e0b;
+}
+
+.leaderboardEntry:nth-child(2) {
+    background: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%);
+    border-color: #9ca3af;
+}
+
+.leaderboardEntry:nth-child(3) {
+    background: linear-gradient(135deg, #fef2f2 0%, #fca5a5 100%);
+    border-color: #f87171;
+}
+
+.rank {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-right: 15px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.playerInfo {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.playerName {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.gameDetails {
+    font-size: 0.9rem;
+    color: #6b7280;
+    text-transform: capitalize;
+}
+
+.score {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #059669;
+    background: rgba(5, 150, 105, 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    min-width: 80px;
+    text-align: center;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .container {
