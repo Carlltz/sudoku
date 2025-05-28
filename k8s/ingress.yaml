@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: sudoku-game-ingress
+    labels:
+        app: sudoku-game
+    annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+        cert-manager.io/cluster-issuer: 'letsencrypt-prod'
+        nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+spec:
+    ingressClassName: nginx
+    tls:
+        - hosts:
+              - sudoku.liljen.se
+          secretName: sudoku-game-tls
+    rules:
+        - host: sudoku.liljen.se
+          http:
+              paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                        service:
+                            name: sudoku-game-service
+                            port:
+                                number: 80
