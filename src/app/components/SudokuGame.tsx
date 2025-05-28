@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import styles from './SudokuGame.module.css';
 
 type SudokuGrid = (number | null)[][];
-type Difficulty = 'easy' | 'medium' | 'hard';
+type Difficulty = 'easy' | 'medium' | 'hard' | 'killer';
+
+interface KillerCage {
+    id: number;
+    cells: { row: number; col: number }[];
+    sum: number;
+}
 
 interface LeaderboardEntry {
     id: string;
@@ -24,6 +30,7 @@ interface GameState {
     isComplete: boolean;
     timer: number;
     isTimerRunning: boolean;
+    killerCages?: KillerCage[];
 }
 
 const SudokuGame = () => {
@@ -131,6 +138,13 @@ const SudokuGame = () => {
 
     // Create puzzle by removing numbers from solution
     const createPuzzle = (solution: SudokuGrid, difficulty: Difficulty): SudokuGrid => {
+        // For killer sudoku, start with completely empty grid
+        if (difficulty === 'killer') {
+            return Array(9)
+                .fill(null)
+                .map(() => Array(9).fill(null));
+        }
+
         const puzzle = solution.map((row) => [...row]);
         const cellsToRemove = {
             easy: 40,
@@ -159,10 +173,75 @@ const SudokuGame = () => {
         return puzzle;
     };
 
+    // Generate killer cages for killer sudoku
+    const generateKillerCages = (solution: SudokuGrid): KillerCage[] => {
+        const cages: KillerCage[] = [];
+        const usedCells = new Set<string>();
+        let cageId = 0;
+
+        // Simple cage generation - create random sized cages (2-4 cells)
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                const cellKey = `${row}-${col}`;
+                if (usedCells.has(cellKey)) continue;
+
+                const cage: KillerCage = {
+                    id: cageId++,
+                    cells: [{ row, col }],
+                    sum: solution[row][col]!,
+                };
+
+                usedCells.add(cellKey);
+
+                // Try to add adjacent cells to the cage
+                const cageSize = Math.floor(Math.random() * 3) + 2; // 2-4 cells
+                const directions = [
+                    [0, 1], [1, 0], [0, -1], [-1, 0]
+                ];
+
+                for (let i = 1; i < cageSize; i++) {
+                    let added = false;
+                    const shuffledDirections = [...directions].sort(() => Math.random() - 0.5);
+                    
+                    for (const [dr, dc] of shuffledDirections) {
+                        for (const cell of cage.cells) {
+                            const newRow = cell.row + dr;
+                            const newCol = cell.col + dc;
+                            const newCellKey = `${newRow}-${newCol}`;
+                            
+                            if (
+                                newRow >= 0 && newRow < 9 &&
+                                newCol >= 0 && newCol < 9 &&
+                                !usedCells.has(newCellKey)
+                            ) {
+                                cage.cells.push({ row: newRow, col: newCol });
+                                cage.sum += solution[newRow][newCol]!;
+                                usedCells.add(newCellKey);
+                                added = true;
+                                break;
+                            }
+                        }
+                        if (added) break;
+                    }
+                    if (!added) break;
+                }
+
+                cages.push(cage);
+            }
+        }
+
+        return cages;
+    };
+
     // Start new game
     const startNewGame = useCallback(() => {
         const solution = generateSolution();
         const puzzle = createPuzzle(solution, difficulty);
+        
+        let killerCages: KillerCage[] | undefined;
+        if (difficulty === 'killer') {
+            killerCages = generateKillerCages(solution);
+        }
 
         setGameState({
             grid: puzzle.map((row) => [...row]),
@@ -173,6 +252,7 @@ const SudokuGame = () => {
             isComplete: false,
             timer: 0,
             isTimerRunning: true,
+            killerCages,
         });
     }, [difficulty]);
 
@@ -203,6 +283,45 @@ const SudokuGame = () => {
             return true;
         };
 
+        // Validate killer cages if in killer mode
+        const validateKillerCages = (): void => {
+            if (!gameState.killerCages) return;
+
+            for (const cage of gameState.killerCages) {
+                const cageValues: number[] = [];
+                let hasNull = false;
+
+                for (const cell of cage.cells) {
+                    const value = grid[cell.row][cell.col];
+                    if (value === null) {
+                        hasNull = true;
+                    } else {
+                        cageValues.push(value);
+                    }
+                }
+
+                // Check for duplicates within cage
+                const uniqueValues = new Set(cageValues);
+                if (uniqueValues.size !== cageValues.length) {
+                    // Mark all cells in cage as errors
+                    for (const cell of cage.cells) {
+                        errors.add(`${cell.row}-${cell.col}`);
+                    }
+                }
+
+                // Check sum constraint (only if cage is complete)
+                if (!hasNull && cageValues.length === cage.cells.length) {
+                    const sum = cageValues.reduce((a, b) => a + b, 0);
+                    if (sum !== cage.sum) {
+                        // Mark all cells in cage as errors
+                        for (const cell of cage.cells) {
+                            errors.add(`${cell.row}-${cell.col}`);
+                        }
+                    }
+                }
+            }
+        };
+
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
                 const value = grid[row][col];
@@ -210,6 +329,11 @@ const SudokuGame = () => {
                     errors.add(`${row}-${col}`);
                 }
             }
+        }
+
+        // Add killer cage validation
+        if (difficulty === 'killer') {
+            validateKillerCages();
         }
 
         return errors;
@@ -275,6 +399,7 @@ const SudokuGame = () => {
             easy: 1000,
             medium: 1500,
             hard: 2000,
+            killer: 2500,
         }[difficulty];
 
         // Bonus for speed (more points for faster completion)
@@ -335,6 +460,7 @@ const SudokuGame = () => {
                         <option value="easy">Easy</option>
                         <option value="medium">Medium</option>
                         <option value="hard">Hard</option>
+                        <option value="killer">Killer Sudoku</option>
                     </select>
                     <button
                         onClick={startNewGame}
@@ -450,6 +576,12 @@ const SudokuGame = () => {
                                     Math.floor(gameState.selectedCell.row / 3) === Math.floor(rowIndex / 3) &&
                                     Math.floor(gameState.selectedCell.col / 3) === Math.floor(colIndex / 3);
 
+                                // Find killer cage for this cell
+                                const killerCage = gameState.killerCages?.find(cage =>
+                                    cage.cells.some(cageCell => cageCell.row === rowIndex && cageCell.col === colIndex)
+                                );
+                                const isFirstCellInCage = killerCage?.cells[0].row === rowIndex && killerCage?.cells[0].col === colIndex;
+
                                 return (
                                     <div
                                         key={`${rowIndex}-${colIndex}`}
@@ -457,9 +589,16 @@ const SudokuGame = () => {
                                             isInitial ? styles.initial : ''
                                         } ${hasError ? styles.error : ''} ${
                                             isInSameRow || isInSameCol || isInSameBox ? styles.highlighted : ''
-                                        }`}
+                                        } ${killerCage ? styles.killerCell : ''}`}
+                                        style={killerCage ? {
+                                            backgroundColor: `hsl(${(killerCage.id * 137.5) % 360}, 30%, 95%)`,
+                                            border: `2px solid hsl(${(killerCage.id * 137.5) % 360}, 50%, 70%)`
+                                        } : {}}
                                         onClick={() => handleCellClick(rowIndex, colIndex)}>
-                                        {cell || ''}
+                                        {isFirstCellInCage && killerCage && (
+                                            <div className={styles.cageSum}>{killerCage.sum}</div>
+                                        )}
+                                        <div className={styles.cellValue}>{cell || ''}</div>
                                     </div>
                                 );
                             })
